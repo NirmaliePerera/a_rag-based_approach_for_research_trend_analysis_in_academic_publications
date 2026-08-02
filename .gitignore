@@ -205,3 +205,22 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Sample Papers
+data/sample_papers/*
+
+# Papers
+data/papers
+data/papers1
+#temporary
+data/* 
+
+sample.pdf
+output.xml
+
+# outputs of SLAAI extraction
+output_data/grobid_extracted
+output_data/gemini_extracted_data/gemini_extracted_slaai
+output_data/grobid_extracted_slaai
+output_data/gemini_extracted_data/metadata_output
+output_data/gemini_extracted_data/metadata_output/metadata.json
