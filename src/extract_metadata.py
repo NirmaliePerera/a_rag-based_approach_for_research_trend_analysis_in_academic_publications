@@ -35,9 +35,8 @@ from pydantic import BaseModel, Field
 
 EXTRACTION_VERSION = 5
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_INPUT_DIR = PROJECT_ROOT / "data" / "papers"
-DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "output_data" / "gemini_extracted_data" / "gemini_extracted_slaai"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+METADATA_OUTPUT_DIR = PROJECT_ROOT / "data" / "metadata"
 
 load_dotenv(PROJECT_ROOT / ".env")
 
@@ -102,6 +101,8 @@ def extract_first_n_pages(pdf_path: Path, n: int = 2) -> bytes:
     writer.write(buffer)
     return buffer.getvalue()
 
+# ----------------------------------------------------------------------------
+
 def extract_metadata_from_pdf_with_retry(
     pdf_path: Path, 
     client: genai.Client, 
@@ -126,13 +127,21 @@ def extract_metadata_from_pdf_with_retry(
             return response.parsed
             
         except errors.APIError as e:
-            if e.code == 429 or "RESOURCE_EXHAUSTED" in str(e):
+            retryable = (
+                e.code in [429, 503]
+                or "RESOURCE_EXHAUSTED" in str(e)
+                or "UNAVAILABLE" in str(e)
+            )
+
+            if retryable:
                 if attempt == max_retries:
                     print(f"   ❌ Max retries reached for {pdf_path.name}.")
                     raise e
                 
                 wait_time = 15 * (2 ** (attempt - 1))
-                print(f"   ⚠️ Rate limit hit. Waiting {wait_time}s before attempt {attempt + 1}/{max_retries}...")
+                print(
+                    f"   ⚠️ Temporary API issue. Waiting {wait_time}s before attempt {attempt + 1}/{max_retries}..."
+                )
                 time.sleep(wait_time)
             else:
                 raise e
@@ -150,17 +159,17 @@ def paper_json_path(output_dir: Path, pdf_path: Path) -> Path:
     """Return the path where the per-paper JSON result should be stored."""
     return output_dir / f"{pdf_path.stem}.json"
 
+# ----------------------------------------------------------------------------
+
 def already_extracted(output_dir: Path, pdf_path: Path) -> bool:
-    """Return True if a valid, up-to-date extraction result already exists."""
+    """
+    Return True if metadata JSON already exists.
+    """
+
     json_path = paper_json_path(output_dir, pdf_path)
-    if not json_path.exists():
-        return False
-    try:
-        with open(json_path, encoding="utf-8") as fh:
-            record = json.load(fh)
-        return record.get("version", 0) >= EXTRACTION_VERSION
-    except Exception:
-        return False
+    return json_path.exists()
+
+# --------------------------------------------------------------------------
 
 def save_paper_result(output_dir: Path, pdf_path: Path, record: dict) -> None:
     """Write *record* to the per-paper JSON file."""
@@ -177,33 +186,50 @@ def process_paper(
     client: genai.Client,
     output_dir: Path,
     model_name: str = "gemini-3.5-flash",
-) -> dict:
-    """Extract metadata for a single PDF and save the result to *output_dir*."""
+) -> dict | None:
+    """
+    Extract metadata for a single PDF.
+    Save JSON ONLY if extraction succeeds.
+    """
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Resume support: skip API calls when an up-to-date JSON already exists.
     if already_extracted(output_dir, pdf_path):
         print(f"   ⏩ Skipping {pdf_path.name} (already extracted)")
+
         with open(paper_json_path(output_dir, pdf_path), encoding="utf-8") as fh:
             return json.load(fh)
 
     try:
-        metadata = extract_metadata_from_pdf_with_retry(pdf_path, client, model_name)
+
+        metadata = extract_metadata_from_pdf_with_retry(
+            pdf_path,
+            client,
+            model_name
+        )
+
         if metadata is None:
             raise RuntimeError("Extraction returned empty result")
+
         record = metadata.model_dump()
+        record["status"] = "success"
         record["source_file"] = pdf_path.name
+
+        save_paper_result(output_dir, pdf_path, record)
+
         print(f"   ✅ Success!")
+
+        return record
+
     except Exception as error:
-        record = {
-            "version": EXTRACTION_VERSION,
-            "source_file": pdf_path.name,
-            "error": str(error),
-        }
+
         print(f"   ❌ Error: {error}")
 
-    save_paper_result(output_dir, pdf_path, record)
-    return record
+        return {
+            "status": "failed",
+            "source_file": pdf_path.name,
+            "error": str(error)
+        }
 
 # ---------------------------------------------------------------------------
 # Batch processing
@@ -211,47 +237,116 @@ def process_paper(
 
 def process_all_papers(
     client: genai.Client,
-    input_dir: Path = DEFAULT_INPUT_DIR,
-    output_dir: Path = DEFAULT_OUTPUT_DIR,
+    input_dir: Path,
+    output_dir: Path = METADATA_OUTPUT_DIR,
     model_name: str = "gemini-3.5-flash",
-) -> list[dict]:
-    """Process every PDF in *input_dir* (including subfolders) and save per-paper JSON."""
+    progress_callback=None,
+):
+    """
+    Process every PDF.
+    Skip papers that already have metadata JSON.
+    """
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if not input_dir.exists():
         print(f"Error: Input directory does not exist: {input_dir}")
-        return []
+        return
 
-    # Recursively find all PDF files in subfolders
-    pdf_files = [
-        p for p in sorted(input_dir.rglob("*")) 
+    all_pdf_files = [
+        p for p in sorted(input_dir.rglob("*"))
         if p.is_file() and p.suffix.lower() == ".pdf"
     ]
-    print(f"Found {len(pdf_files)} PDF file(s) in {input_dir}")
+
+    pdf_files = [
+        p for p in all_pdf_files
+        if not already_extracted(output_dir, p)
+    ]
+
+    print(f"Found {len(pdf_files)} PDF file(s) requiring extraction.")
 
     BASE_DELAY_SECONDS = 16
+
+    success = 0
+    failed = 0
+    failed_files = []
     results = []
 
     for i, pdf_path in enumerate(pdf_files, 1):
+
+        if progress_callback:
+            progress_callback(
+                current=i,
+                total=len(pdf_files),
+                filename=pdf_path.name
+            )
+
         print(f"[{i}/{len(pdf_files)}] Processing {pdf_path.name}...")
-        
-        is_cached = already_extracted(output_dir, pdf_path)
-        record = process_paper(pdf_path, client, output_dir, model_name)
+
+        record = process_paper(
+            pdf_path,
+            client,
+            output_dir,
+            model_name
+        )
+
         results.append(record)
 
-        # Only delay if an actual API call was made and there are remaining files
-        if not is_cached and i < len(pdf_files):
-            print(f"   ⏱️ Sleeping {BASE_DELAY_SECONDS}s to stay under RPM limit...")
+        if record["status"] == "success":
+            success += 1
+        else:
+            failed += 1
+            failed_files.append(record)
+
+        if i < len(pdf_files):
+            print(f"   ⏱️ Sleeping {BASE_DELAY_SECONDS}s...")
             time.sleep(BASE_DELAY_SECONDS)
 
     print("\n🎉 Batch processing complete!")
-    return results
 
-if __name__ == "__main__":
+    return {
+        "results": results,
+        "success": success,
+        "failed": failed,
+        "failed_files": failed_files
+    }
+
+# -------------------------------------------------------------
+
+def extract_metadata(pdf_folder: Path, progress_callback=None):
     api_key = os.getenv("GEMINI_API_KEY")
+
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is not set")
 
-    print("Starting metadata extraction...")
     client = genai.Client(api_key=api_key)
-    process_all_papers(client)
+
+    return process_all_papers(
+        client=client,
+        input_dir=pdf_folder,
+        output_dir=METADATA_OUTPUT_DIR,
+        progress_callback=progress_callback
+    )
+
+
+def find_missing_metadata(
+    pdf_folder: Path,
+    metadata_folder: Path = METADATA_OUTPUT_DIR
+):
+    """
+    Returns a list of PDFs that do not yet have metadata JSON files.
+    """
+
+    pdf_files = {
+        pdf.stem
+        for pdf in pdf_folder.glob("*.pdf")
+    }
+
+    metadata_files = {
+        json_file.stem
+        for json_file in metadata_folder.glob("*.json")
+    }
+
+    missing = sorted(pdf_files - metadata_files)
+
+    return missing

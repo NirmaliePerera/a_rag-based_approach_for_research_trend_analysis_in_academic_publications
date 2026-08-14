@@ -2,6 +2,9 @@
 __pycache__/
 *.py[codz]
 *$py.class
+.env
+*.pyc
+chroma_paper_db/
 
 # C extensions
 *.so
@@ -210,10 +213,7 @@ __marimo__/
 data/sample_papers/*
 
 # Papers
-data/papers
-data/papers1
-#temporary
-data/* 
+data/papers 
 
 sample.pdf
 output.xml
@@ -224,3 +224,15 @@ output_data/gemini_extracted_data/gemini_extracted_slaai
 output_data/grobid_extracted_slaai
 output_data/gemini_extracted_data/metadata_output
 output_data/gemini_extracted_data/metadata_output/metadata.json
+
+# RAG related outputs
+chroma_paper_db_v2/*
+data/*
+
+# Testing related temporary files
+test1.py
+app1.py
+topic_model_copy.py
+topic_model_copy.py.bak
+diagnosis.py
+src\rag_engine.py
