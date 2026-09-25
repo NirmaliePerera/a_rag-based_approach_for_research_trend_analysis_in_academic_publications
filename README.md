@@ -2,6 +2,12 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub repository](https://img.shields.io/badge/GitHub-Repository-181717?logo=github)](https://github.com/NirmaliePerera/rag-based_topic_trend_analysis_in_academic_publications)
+[![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![RAG](https://img.shields.io/badge/Approach-RAG-8A2BE2)](#)
+[![Gemini](https://img.shields.io/badge/LLM-Gemini-4285F4?logo=google)](https://ai.google.dev/)
+[![ChromaDB](https://img.shields.io/badge/Vector%20Database-ChromaDB-FF6F61)](https://www.trychroma.com/)
+[![BERTopic](https://img.shields.io/badge/Topic%20Modeling-BERTopic-20B2AA)](https://maartengr.github.io/BERTopic/)
+[![spaCy](https://img.shields.io/badge/NLP-spaCy-09A3D5?logo=spacy)](https://spacy.io/)
 
 ## Overview
 
@@ -37,6 +43,12 @@ In RAG-based trend analysis, a user-provided keyword or phrase is used to retrie
 
 A separate evaluation component tracks how discovered topics evolve year-over-year, classifying them as persisted, grown, declined, or newly emerged.
 
+Following is the design diagram that explains the system architecture of the RAG-based system.
+
+<p align="center">
+  <img src="docs/system-architecture.png" alt="System Architecture" width="850">
+</p>
+
 ## Technology Stack
 
 * Language: Python
@@ -56,3 +68,76 @@ A separate evaluation component tracks how discovered topics evolve year-over-ye
 * Year-to-year topic evolution analysis (persisted / grown / declined / emerged)
 * LLM-generated trend summaries grounded in retrieved paper content
 * Interactive visualizations of publication trends and topic distribution
+
+## Installation
+
+### Clone the Repository
+
+🌿 Repository Branches
+The repository provides two versions of the project:
+
+Branch      |	Purpose
+main	      | Clean prototype containing the files required to set up and run the system with a fresh dataset.
+rag-pipeline  | 	Research/development version containing the processed metadata, embeddings, and populated vector database used during experimentation.
+
+#### Option 1 — Clean Prototype
+
+Use the main branch if you want to set up the system from scratch using your own academic publication data.
+
+`git clone https://github.com/NirmaliePerera/rag-based_topic_trend_analysis_in_academic_publications.git` 
+
+`cd rag-based_topic_trend_analysis_in_academic_publications`
+
+The main branch is checked out automatically when the repository is cloned.
+
+#### Option 2 — RAG Pipeline with Existing Data
+
+Use the rag_pipeline branch if you want to explore the version containing the existing metadata, preprocessed data, embeddings, and vector database.
+
+`git clone --branch rag_pipeline https://github.com/NirmaliePerera/rag-based_topic_trend_analysis_in_academic_publications.git`
+
+`cd rag-based_topic_trend_analysis_in_academic_publications`
+
+### Create a Virtual Environment
+
+`python -m venv venv`
+
+Activate the environment on Windows:
+
+`.\.venv\Scripts\Activate.ps1`
+
+### Installing Dependencies
+
+`pip install -r requirements.txt`
+
+### Configure API Keys
+
+Set the Gemini API key as an environmental variable.
+
+`export GEMINI_API_KEY="your-api-key-here"`
+
+or simply add 'GEMINI_API_KEY=your-api-key-here' in .env file.
+
+## Usage
+
+run the app using:
+
+`streamlit run app.py`
+
+Upload research paper PDFs, extract and preprocess metadata, generate embeddings, and run topic modeling before querying the trend analysis interface.
+
+## Evaluation
+
+Retrieval performance was evaluated using Average Precision (AP) and ROC-AUC across four discovered topics, achieving a mean AP of 0.707 and mean ROC-AUC of 0.860. Full evaluation methodology and results are detailed in the accompanying thesis document.
+
+## Limitations
+
+* Small per-year corpus size affects the reliability of topic evolution analysis for less-distinct research themes.
+* Retrieval recall indicates a portion of relevant papers are not captured within top-ranked results.
+* Evaluation relies on the system's own topic model as ground truth, in the absence of an independently labeled dataset.
+
+## Author / Acknowledgments
+
+D. N. S. D. Perera, BSc (Hons) Information Technology
+
+Supervised by Prof. A. T. P. Silva
