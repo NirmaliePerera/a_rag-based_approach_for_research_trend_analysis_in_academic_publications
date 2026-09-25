@@ -1,5 +1,6 @@
 from pathlib import Path
 import sqlite3
+import pandas as pd
 
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -30,8 +31,7 @@ def generate_embeddings():
     if not rows:
 
         conn.close()
-
-        return 0
+        return pd.DataFrame()  # empty — nothing to embed this run
 
     embedding_model = HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-MiniLM-L6-v2"
@@ -44,6 +44,7 @@ def generate_embeddings():
 
     documents = []
     ids = []
+    embedded_records = []
 
     for source_file, title, authors, year, document in rows:
 
@@ -65,6 +66,12 @@ def generate_embeddings():
         )
 
         ids.append(source_file)
+        embedded_records.append({
+            "source_file": source_file,
+            "title": title,
+            "authors": authors,
+            "year": year
+        })
 
     vector_db.add_documents(
         documents=documents,
@@ -81,4 +88,4 @@ def generate_embeddings():
 
     conn.close()
 
-    return len(rows)
+    return pd.DataFrame(embedded_records)
