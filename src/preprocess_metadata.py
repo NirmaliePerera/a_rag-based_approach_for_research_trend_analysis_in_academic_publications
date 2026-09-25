@@ -3,14 +3,10 @@ import json
 import pandas as pd
 import streamlit as st
 
-def preprocess_metadata(metadata_folder: Path) -> pd.DataFrame:
-    """
-    Preprocess newly extracted metadata only.
-    Marks processed JSON files with:
-        "preprocessed": true
-    """
-
+def preprocess_metadata(metadata_folder: Path) -> tuple[pd.DataFrame, dict]:
     processed_records = []
+    skipped_records = []
+    already_done_count = 0
 
     json_files = sorted(metadata_folder.glob("*.json"))
 
@@ -19,34 +15,13 @@ def preprocess_metadata(metadata_folder: Path) -> pd.DataFrame:
         with open(json_file, "r", encoding="utf-8") as f:
             paper = json.load(f)
 
-        # st.write({
-        #     "file": json_file.name,
-        #     "status": paper.get("status"),
-        #     "preprocessed": paper.get("preprocessed"),
-        #     "title": bool(paper.get("title")),
-        #     "abstract": bool(paper.get("abstract")),
-        #     "year": paper.get("year")
-        # })
-
-        # ---------------------------------------
-        # Skip failed extractions
-        # ---------------------------------------
+        if paper.get("preprocessed", False):
+            already_done_count += 1  # not part of this run — exclude from totals
+            continue
 
         if paper.get("status") != "success":
-            print(f"{json_file.name}: skipped (status={paper.get('status')})")
+            skipped_records.append({"file": json_file.name, "reason": f"status={paper.get('status')}"})
             continue
-
-        # ---------------------------------------
-        # Skip already preprocessed papers
-        # ---------------------------------------
-
-        if paper.get("preprocessed", False):
-            print(f"{json_file.name}: skipped (already preprocessed)")
-            continue
-
-        # ---------------------------------------
-        # Required fields
-        # ---------------------------------------
 
         title = paper.get("title")
         authors = paper.get("authors", [])
@@ -55,17 +30,9 @@ def preprocess_metadata(metadata_folder: Path) -> pd.DataFrame:
         keywords = paper.get("keywords", [])
         source_file = paper.get("source_file")
 
-        # ---------------------------------------
-        # Ignore incomplete metadata
-        # ---------------------------------------
-
         if not title or not abstract or not year:
-            print(f"{json_file.name}: skipped (missing title/abstract/year)")
+            skipped_records.append({"file": json_file.name, "reason": "missing title/abstract/year"})
             continue
-
-        # ---------------------------------------
-        # Normalize year
-        # ---------------------------------------
 
         year = str(year)
 
@@ -74,20 +41,12 @@ def preprocess_metadata(metadata_folder: Path) -> pd.DataFrame:
         match = re.search(r"\d{4}", year)
 
         if not match:
-            print(f"{json_file.name}: skipped (invalid year={year})")
+            skipped_records.append({"file": json_file.name, "reason": f"invalid year={year}"})
             continue
 
         year = int(match.group())
 
-        # ---------------------------------------
-        # Create document
-        # ---------------------------------------
-
-        document = (
-            title.strip()
-            + "\n\nAbstract:\n"
-            + abstract.strip()
-        )
+        document = title.strip() + "\n\nAbstract:\n" + abstract.strip()
 
         processed_records.append({
 
@@ -101,33 +60,21 @@ def preprocess_metadata(metadata_folder: Path) -> pd.DataFrame:
 
         })
 
-        # ---------------------------------------
-        # Mark JSON as preprocessed
-        # ---------------------------------------
-
         paper["preprocessed"] = True
 
         with open(json_file, "w", encoding="utf-8") as f:
-            json.dump(
-                paper,
-                f,
-                indent=2,
-                ensure_ascii=False
-            )
-
+            json.dump(paper, f, indent=2, ensure_ascii=False)
 
     meta_df = pd.DataFrame(processed_records)
 
-    
-    # ---------------------------------------
-    # Remove duplicate papers
-    # ---------------------------------------
-
     if not meta_df.empty:
+        meta_df.drop_duplicates(subset=["title"], inplace=True)
 
-        meta_df.drop_duplicates(
-            subset=["title"],
-            inplace=True
-        )
+    summary = {
+        "total": len(processed_records) + len(skipped_records),  # this run only
+        "success": len(meta_df),
+        "failure": len(skipped_records),
+        "skipped_details": skipped_records,
+    }
 
-    return meta_df
+    return meta_df, summary
