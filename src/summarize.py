@@ -51,16 +51,24 @@ def _save_summary(conn, query, paper_ids_hash, summary):
     conn.commit()
 
 
-def build_context(papers_df, max_papers=10, max_abstract_chars=500):
-    entries = []
-
-    for _, row in papers_df.head(max_papers).iterrows():
-        abstract = str(row["abstract"])[:max_abstract_chars]
-
-        entries.append(
-            f"Year: {row['year']}\n"
-            f"Abstract: {abstract}"
+def build_context(papers_df, max_papers=12, max_abstract_chars=500):
+    if len(papers_df) <= max_papers:
+        sample = papers_df
+    else:
+        # proportional sampling across years, so the summary reflects
+        # the full retrieved set's spread rather than just the closest matches
+        per_year = max(1, max_papers // papers_df["year"].nunique())
+        sample = (
+            papers_df.sort_values("distance")
+            .groupby("year", group_keys=False)
+            .head(per_year)
+            .head(max_papers)
         )
+
+    entries = []
+    for _, row in sample.iterrows():
+        abstract = str(row["abstract"])[:max_abstract_chars]
+        entries.append(f"Year: {row['year']}\nAbstract: {abstract}")
 
     return "\n\n---\n\n".join(entries)
 
