@@ -2,9 +2,11 @@ import streamlit as st
 from pathlib import Path
 import plotly.express as px
 
-from src.retriever import get_topic_labels, retrieve_papers_by_threshold #, retrieve_papers
+from src.database import get_available_years
+from src.retriever import get_topic_labels, retrieve_papers_adaptive #, retrieve_papers_by_threshold , retrieve_papers
 from src.trend_analysis import generate_topic_distribution, generate_trend
 from src.summarize import generate_summary
+from src.trend_analysing.keyword_bubble import build_keyword_bubble_chart
 
 st.set_page_config(layout="wide")       # default was layout="centered" ( making it narrow, ~730px)
 
@@ -28,7 +30,7 @@ if st.button("Analyze"):
 
     else:
 
-        papers_df = retrieve_papers_by_threshold(query, max_distance=1.2)
+        papers_df = retrieve_papers_adaptive(query, relative_margin=1.35, min_results=5)
 
 
         if papers_df.empty:
@@ -37,14 +39,11 @@ if st.button("Analyze"):
                 "No related papers found."
             )
 
-
         else:
 
             st.success(
                 f"{len(papers_df)} related papers found."
             )
-
-
             # -------------------------
             # Trend chart
             # -------------------------
@@ -118,60 +117,20 @@ if st.button("Analyze"):
 
                 st.dataframe(display_df)
 
-            # trend_df = generate_trend(
-            #     papers_df
-            # )
 
 
-            # st.bar_chart(
-            #     trend_df.set_index("year")
-            # )
+st.subheader("Keyword Landscape by Year")
 
+selected_year = st.selectbox("Select year", get_available_years(), key="keyword_bubble_year")
 
-            # # -------------------------
-            # # Summary + papers
-            # # -------------------------
+if st.button("Show Keyword Landscape"):
+    with st.spinner(f"Building keyword map for {selected_year}..."):
+        fig = build_keyword_bubble_chart(selected_year)
 
-            # col1, col2 = st.columns(2)
+    st.plotly_chart(fig, width="stretch", key="keyword_bubble_chart")
+    st.caption("Bubble size reflects how many papers mention that keyword. Keywords positioned closer together tend to appear in the same papers more often.")
 
-
-            # with col1:
-
-            #     st.subheader(
-            #         "Summary"
-            #     )
-
-
-            #     summary = generate_summary(
-            #         papers_df
-            #     )
-
-
-            #     st.write(summary)
-
-
-
-            # with col2:
-
-            #     st.subheader(
-            #         "Related Papers"
-            #     )
-
-
-            #     display_df = papers_df[
-            #         [
-            #             "title",
-            #             "authors",
-            #             "year"
-            #         ]
-            #     ]
-
-
-            #     st.dataframe(
-            #         display_df,
-            #         use_container_width=True
-            #     )
-
+            
 
     if st.button("Back"):
 

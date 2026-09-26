@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 from pathlib import Path
 
 from src.extract_metadata import (
@@ -21,12 +22,8 @@ from src.generate_embeddings import generate_embeddings
 from src.preprocess_metadata import preprocess_metadata
 
 from src.yearly_topic_model.topic_model_yearly import run_topic_model_for_year
-
-from src.retriever import retrieve_papers
-from src.trend_analysis import generate_trend
-from src.summarize import generate_summary
-
-
+from src.trend_analysing.keyword_bubble import build_keyword_bubble_chart
+from src.ui_helpers import show_summary_and_preview, build_success_df
 # --------------------------------------------------
 # Streamlit App Configuration
 # --------------------------------------------------
@@ -98,33 +95,22 @@ if st.session_state.page == "main":
                     status.text(f"Processing {current}/{total}: {filename}")
 
                 try:
-                    summary = extract_metadata(
-                        upload_folder,
-                        progress_callback=update_progress
+                    summary = extract_metadata(upload_folder, progress_callback=update_progress)
+                    progress.progress(1.0)
+                    status.empty()
+
+                    success_df = build_success_df(summary["results"])
+
+                    show_summary_and_preview(
+                        success_df,
+                        title="Metadata Extraction Results",
+                        total=summary["success"] + summary["failed"],
+                        success=summary["success"],
+                        failure=summary["failed"],
                     )
 
-                    progress.progress(1.0)
-
-                    if summary["failed"] == 0:
-                        status.success(
-                            f"""
-                            Metadata extraction completed.
-
-                            Successful : {summary['success']}
-                            Failed : 0
-                            """
-                        )
-                    else:
-                        status.warning(
-                            f"""
-                            Metadata extraction completed with errors.
-
-                            Successful : {summary['success']}
-                            Failed : {summary['failed']}
-                            """
-                        )
-
-                        with st.expander("View failed papers"):
+                    if summary["failed"] > 0:
+                        with st.expander(f"Show {summary['failed']} failed paper(s)"):
                             for item in summary["failed_files"]:
                                 st.error(f"{item['source_file']}\n\n{item['error']}")
 
@@ -162,32 +148,29 @@ if st.session_state.page == "main":
                 for paper in missing:
                     st.write(f"• {paper}.pdf")
 
-                if st.button(
-                    "Extract Missing Metadata",
-                    key="extract_missing_metadata"
-                ):
-
+                if st.button("Extract Missing Metadata", key="extract_missing_metadata"):
                     progress = st.progress(0)
                     status = st.empty()
 
                     def update_progress(current, total, filename):
                         progress.progress(current / total)
-                        status.text(
-                            f"Processing {current}/{total}: {filename}"
-                        )
+                        status.text(f"Processing {current}/{total}: {filename}")
 
-                    summary = extract_metadata(
-                        upload_folder,
-                        progress_callback=update_progress
-                    )
-
+                    summary = extract_metadata(upload_folder, progress_callback=update_progress)
                     st.session_state["summary"] = summary
 
                     progress.progress(1.0)
+                    status.empty()
 
-                    status.success("Finished extracting missing metadata.")
+                    success_df = build_success_df(summary["results"])
 
-
+                    show_summary_and_preview(
+                        success_df,
+                        title="Missing Metadata Extraction Results",
+                        total=summary["success"] + summary["failed"],
+                        success=summary["success"],
+                        failure=summary["failed"],
+                    )
 
     # ---------------------------------------------------------------------
     # Display extraction summary
@@ -286,19 +269,27 @@ if st.session_state.page == "main":
             use_container_width=True
         ):
 
-            meta_df = preprocess_metadata(metadata_folder)
+            meta_df, summary = preprocess_metadata(metadata_folder)
 
             if meta_df.empty:
 
                 st.info("No new papers to preprocess.")
-            
+
             else:
 
                 append_metadata(meta_df)
 
-                st.success(
-                    f"{len(meta_df)} paper(s) preprocessed and stored in SQLite."
+                show_summary_and_preview(
+                    meta_df,
+                    title="Metadata Preprocessing Results",
+                    total=summary["total"],
+                    success=summary["success"],
+                    failure=summary["failure"],
                 )
+
+                if summary["failure"] > 0:
+                    with st.expander(f"Show {summary['failure']} skipped/failed record(s)"):
+                        st.dataframe(pd.DataFrame(summary["skipped_details"]), width="stretch")
 
     # ---------------------------------------------------------------------
     # Generate Embeddings Button
@@ -311,10 +302,15 @@ if st.session_state.page == "main":
             use_container_width=True
         ):
 
-            count = generate_embeddings()
+            embedded_df = generate_embeddings()
 
-            st.success(f"{count} papers embedded.")
-
+            show_summary_and_preview(
+                embedded_df,
+                title="Embedding Generation Results",
+                total=len(embedded_df),
+                success=len(embedded_df),
+                failure=0,
+            )
     # -------------------
     # temporary button
     # -------------------
