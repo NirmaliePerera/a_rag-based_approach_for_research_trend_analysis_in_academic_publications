@@ -97,7 +97,7 @@ def evaluate_transition(year_from, year_to):
         keywords = ", ".join(word for word, _ in words[:6])
 
         rows.append({
-            "topic_id": int(topic_id),
+            "topic_id": int(topic_id), 
             "keywords": keywords,
             f"count_{year_from}": count_from,
             f"count_{year_to}": count_to,
@@ -105,12 +105,8 @@ def evaluate_transition(year_from, year_to):
             f"share_{year_to}": round(share_to * 100, 1),
             "status": _classify_change(share_from, share_to),
         })
-
     evolution_df = pd.DataFrame(rows).sort_values(f"count_{year_to}", ascending=False)
 
-    # -----------------------------------------
-    # Papers in year_to that fit NONE of year_from's topics
-    # -----------------------------------------
     outlier_mask = [t == -1 for t in new_topics]
     outlier_indices = [i for i, is_outlier in enumerate(outlier_mask) if is_outlier]
     outlier_papers = papers_to.iloc[outlier_indices].reset_index(drop=True)
@@ -134,5 +130,4 @@ def evaluate_transition(year_from, year_to):
     return {
         "evolution_df": evolution_df,
         "outlier_papers": outlier_papers,   # papers not fitting any year_from topic
-        "emerging_keywords": emerging_keywords,  # candidate name for the emerging cluster, if computable
-    }
+        "emerging_keywords": emerging_keywords,  }# candidate name for the emerging cluster, if computable 
