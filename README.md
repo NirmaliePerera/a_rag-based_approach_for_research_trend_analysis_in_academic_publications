@@ -1,4 +1,4 @@
-# RAG-Based Topic Trend Analysis in Academic Publications
+# A RAG-Based Approach for Research Trend Analysis in Academic Publications
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub repository](https://img.shields.io/badge/GitHub-Repository-181717?logo=github)](https://github.com/NirmaliePerera/rag-based_topic_trend_analysis_in_academic_publications)
