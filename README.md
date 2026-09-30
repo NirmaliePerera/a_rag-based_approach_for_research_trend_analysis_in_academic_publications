@@ -69,6 +69,12 @@ Following is the design diagram that explains the system architecture of the RAG
 * LLM-generated trend summaries grounded in retrieved paper content
 * Interactive visualizations of publication trends and topic distribution
 
+## Training and Testing Data
+
+For testing different components, different data sets were used. For metadata extraction publication PDFs with different layouts and formats are used. The first round used a set of 10 papers and were evaluated manually. Two methods were selected and further tested using the second set of 83 papers from 5 different publishers, downloaded along with their metadata from the OpenAlex using an automated script. Extracted metadata were evaluated against the OpenAlex metadata as the ground truth. 
+
+Testing topic modeling and analysis was done using a metadata dataset downloaded from Kaggle ([Dataset URL](https://www.kaggle.com/datasets/sumitm004/arxiv-scientific-research-papers-dataset)). After methods were selected and the system pipeline was built, a set of 87 papers from SLAAI International Conference were used for testing each stage/component of the system.
+
 ## Installation
 
 ### Clone the Repository
