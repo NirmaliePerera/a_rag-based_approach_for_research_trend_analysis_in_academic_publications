@@ -46,7 +46,7 @@ A separate evaluation component tracks how discovered topics evolve year-over-ye
 Following is the design diagram that explains the system architecture of the RAG-based system.
 
 <p align="center">
-  <img src="docs/system-architecture.png" alt="System Architecture" width="850">
+  <img src="docs/System Architecture.png" alt="System Architecture" width="850">
 </p>
 
 ## Technology Stack
