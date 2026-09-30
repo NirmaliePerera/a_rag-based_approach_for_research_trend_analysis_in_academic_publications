@@ -1,4 +1,4 @@
-# RAG-Based Topic Trend Analysis in Academic Publications
+# A RAG-Based Approach for Research Trend Analysis in Academic Publications
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub repository](https://img.shields.io/badge/GitHub-Repository-181717?logo=github)](https://github.com/NirmaliePerera/rag-based_topic_trend_analysis_in_academic_publications)
@@ -84,9 +84,9 @@ rag-pipeline  | 	Research/development version containing the processed metadata,
 
 Use the main branch if you want to set up the system from scratch using your own academic publication data.
 
-`git clone https://github.com/NirmaliePerera/rag-based_topic_trend_analysis_in_academic_publications.git` 
+`git clone https://github.com/NirmaliePerera/a_rag-based_approach_for_research_trend_analysis_in_academic_publications.git` 
 
-`cd rag-based_topic_trend_analysis_in_academic_publications`
+`cd a_rag-based_approach_for_research_trend_analysis_in_academic_publications.git`
 
 The main branch is checked out automatically when the repository is cloned.
 
@@ -94,9 +94,9 @@ The main branch is checked out automatically when the repository is cloned.
 
 Use the rag_pipeline branch if you want to explore the version containing the existing metadata, preprocessed data, embeddings, and vector database.
 
-`git clone --branch rag_pipeline https://github.com/NirmaliePerera/rag-based_topic_trend_analysis_in_academic_publications.git`
+`git clone --branch rag_pipeline https://github.com/NirmaliePerera/a_rag-based_approach_for_research_trend_analysis_in_academic_publications.git`
 
-`cd rag-based_topic_trend_analysis_in_academic_publications`
+`cd a_rag-based_approach_for_research_trend_analysis_in_academic_publications.git`
 
 ### Create a Virtual Environment
 
@@ -105,6 +105,10 @@ Use the rag_pipeline branch if you want to explore the version containing the ex
 Activate the environment on Windows:
 
 `.\.venv\Scripts\Activate.ps1`
+
+or
+
+`venv\Scripts\Activate.ps1`
 
 ### Installing Dependencies
 
