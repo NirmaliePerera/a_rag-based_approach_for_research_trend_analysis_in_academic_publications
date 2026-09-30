@@ -1,0 +1,20 @@
+streamlit==1.64.0
+pandas==3.0.6
+numpy==2.5.3
+plotly==7.1.0
+google-genai==2.25.0
+python-dotenv==1.2.3
+pydantic==2.13.5
+pypdf==6.19.0
+langchain-chroma==1.1.0
+langchain-huggingface==1.2.2
+langchain-core==1.6.6
+sentence-transformers==6.1.0
+spacy==3.8.16
+scikit-learn==1.9.1
+umap-learn==0.5.12
+hdbscan==0.8.44
+bertopic==0.17.4
+
+# Required spaCy language model
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
